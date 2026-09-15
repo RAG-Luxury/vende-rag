@@ -109,24 +109,100 @@ el navegador, y el **API REST** que consume.
   - **Handler global de 401** (en el QueryClient): limpia sesión y hace `window.location.replace('/welcome')`.
   - Convención de códigos: **401** = sesión inválida/expirada (redirige); **403** = negocio
     (autenticado sin permiso, no redirige).
-- **Data fetching:** Server Components para lecturas cacheables/SEO; **TanStack Query** para estado
-  mutable del vendedor (subir/editar producto, listados, cuenta).
+- **Data fetching (real):** hoy **todas** las lecturas y mutaciones corren en el **cliente** vía
+  **TanStack Query** → `http-client` → `/web/*`. Los Server Components existentes son solo páginas de
+  contenido estático y **no** consultan el API. Detalle en **§5**.
 
 ---
 
-## 5. Patrones implementados (fortalezas)
+## 5. Next.js — Server Components, Client Components y route handlers
+
+Cómo el framework (**Next.js 16 App Router + React 19**) se relaciona con las librerías de datos
+(**TanStack Query, Zod, `fetch`**) y cómo se gestionan las peticiones.
+
+### 5.1 Server vs Client Components (uso real)
+
+vende es, en la práctica, **client-first**: casi todo el árbol es Client Component (`'use client'`).
+La frontera es clara y deliberada:
+
+| Superficie | Tipo | Por qué |
+|---|---|---|
+| **Root layout** (`app/layout.tsx`) | 🟩 **Server** | Exporta `metadata`, monta fuentes, `GoogleTag` y el shell. Sin estado de cliente. |
+| **Páginas públicas / estáticas** (`welcome`, `login`, `signup`, `contacto`, `terminos`, `privacidad`, `preguntas-frecuentes`, `disenadores`, `informacion`, `forgot-password`) | 🟩 **Server** | Contenido estático / SEO; se renderizan en el servidor. **No** hacen fetch de datos del API. |
+| **App autenticada** (`home`, `publicaciones`, `vender`, `productos/[id]`, `perfil/*`, `mis-ventas`, `devoluciones`, `solicitudes`, `reset-password`) | 🟦 **Client** (`'use client'`) | La sesión vive en **localStorage** (no cookie), así que `AuthGuard` y las lecturas (TanStack Query) **solo** pueden existir en el cliente. |
+
+**Composición:** `app/layout.tsx` (Server) envuelve `<Providers>` (**boundary Client**:
+`QueryClientProvider` + los `RepositoryProvider` de cada feature + `GoogleOAuthProvider`). Debajo de
+esa frontera, todo es Client Component. Las páginas cliente son **delgadas**: leen params, montan
+`<AuthGuard>` y renderizan un `*Screen` de la feature.
+
+> ⚠️ **Nota honesta:** `CLAUDE.md` describe una estrategia con *Server Components para lecturas
+> SEO/cacheables* (`use cache` / `<Suspense>`). **Hoy no está implementada así**: las lecturas de datos
+> (incluido `productos/[id]`) corren en el **cliente** vía TanStack Query, y los Server Components solo
+> sirven contenido estático. Es deuda/decisión pendiente, no el estado actual.
+
+### 5.2 Route handlers (¿se generó API dentro de Next?)
+
+A diferencia del **Front Admin** (`front-rag`), que sí construyó un **BFF** de 169 route handlers,
+vende **no tiene BFF**: el cliente habla **directo** con `api_rga`. La única excepción es **un** route
+handler:
+
+- **`app/api/upload/route.ts`** — proxy **multipart** para imágenes. El navegador sube los archivos a
+  este handler (mismo origen), que los **reenvía** al API (`/web/products/staging-images` o
+  `/:id/images`), renombra el campo `files → images`, adjunta el `Authorization` y aplica timeout.
+  Existe porque conviene un punto en el servidor para el `FormData`; el resto de peticiones (JSON) no
+  lo necesita.
+
+### 5.3 Cómo se gestionan las peticiones (framework ↔ librerías)
+
+Dos caminos, ambos desde Client Components:
+
+**a) Datos (JSON) — el 99%**
+
+```
+Client Component
+ → hook TanStack Query (useQuery / useMutation)     # cache, estados, invalidación
+   → usecase (application)
+     → interfaz de repo (domain, puerto)
+       → *HttpRepository (infrastructure)
+         → httpRequest()  (shared/infrastructure/http/http-client.ts)
+           → fetch(`${BASE}/web/*`)                 # BASE = NEXT_PUBLIC_BACKEND_URL en cliente
+              Authorization: Bearer <token de localStorage>
+              respuesta → Zod safeParse (valida el shape)
+              401 → UnauthorizedError → handler global (QueryClient) → /welcome
+```
+
+- **`fetch` nativo** (no axios): `http-client.ts` es un wrapper minimalista.
+- **`resolveBaseUrl()`**: `env.server.BACKEND_URL` (SSR) vs `NEXT_PUBLIC_BACKEND_URL` (cliente). Como
+  las peticiones corren en el cliente, gana la rama `NEXT_PUBLIC_*`; la rama SSR queda lista por si
+  algún Server Component llegara a consultar el API.
+- **TanStack Query** orquesta cache/refetch/estados; el `http-client` solo transporta y valida.
+- **Zod** valida en la frontera de `infrastructure`: el contrato con el API se verifica en runtime.
+
+**b) Subida de imágenes (multipart)**
+
+```
+Client (FormData) → POST /api/upload (route handler, server Next) → API /web/products/…images
+```
+
+Es el **único** tramo que pasa por el servidor de Next (ver §5.2).
+
+---
+
+## 6. Patrones implementados (fortalezas)
 
 - ✅ **Clean Architecture estricta y *enforced por ESLint*** (no solo convención).
 - ✅ **Feature-sliced**: alta cohesión, features aisladas; cruce solo por `shared/`.
 - ✅ **Repository pattern + Inyección de dependencias por Context** → testeable y sustituible.
 - ✅ **Zod en la frontera** → seguridad en runtime contra cambios del API.
 - ✅ **TypeScript strict** (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`).
-- ✅ **Separación clara SSR vs cliente** (Server Components + TanStack Query).
+- ✅ **Frontera Server/Client explícita** (§5): root layout + páginas estáticas en el servidor;
+  app autenticada 100% cliente con TanStack Query. Sin BFF (solo `/api/upload` como proxy multipart).
 - ✅ **Tests bajo `test/`** espejando `src/` (Vitest solo recoge `test/**`).
 
 ---
 
-## 6. Puntos débiles / deuda técnica
+## 7. Puntos débiles / deuda técnica
 
 1. **Contrato con el API es manual**: los schemas Zod deben mantenerse en sync con las respuestas del
    API. Si el backend cambia un campo, se detecta en **runtime** (no en compilación) → riesgo de drift.
@@ -142,7 +218,7 @@ el navegador, y el **API REST** que consume.
 
 ---
 
-## 7. Convenciones (resumen)
+## 8. Convenciones (resumen)
 
 - **Named exports** (default solo donde Next lo exige: `page/layout/route/...`).
 - **kebab-case** en archivos; componentes `UpperCamelCase` dentro.
@@ -154,7 +230,7 @@ el navegador, y el **API REST** que consume.
 
 ---
 
-## 8. Cómo agregar un consumo del API (patrón repetible)
+## 9. Cómo agregar un consumo del API (patrón repetible)
 
 1. **Dominio** — método en la interfaz del repo (`features/<f>/domain/*-repository.ts`) + tipos.
 2. **Infra** — impl HTTP (`*-http-repository.ts`) + **schema Zod** (`*-schemas.ts`).
