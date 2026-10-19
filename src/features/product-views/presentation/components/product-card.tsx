@@ -4,7 +4,10 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import type { Product } from '@/src/features/product-views/domain/product-view-repository';
-import { resolvePublicationPillLabel } from '@/src/features/product-views/domain/publication-status';
+import {
+  isPublicationProgress,
+  resolvePublicationPillLabel,
+} from '@/src/features/product-views/domain/publication-status';
 import { getStatusStyle } from './product-status';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
@@ -29,11 +32,9 @@ export function ProductCard({ product, secondary, isSale, heightPx = 350 }: Prod
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = product.image !== '' && !imageFailed;
 
-  const isReceived = product.status.trim().toLowerCase() === 'recibido';
-  const pillStatus =
-    isReceived && product.statusIntern
-      ? resolvePublicationPillLabel(product.statusIntern)
-      : product.status;
+  const pillStatus = isPublicationProgress(product.statusCode)
+    ? resolvePublicationPillLabel(product.statusCode)
+    : product.status;
 
   return (
     <article

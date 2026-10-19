@@ -7,28 +7,24 @@ import {
 const DEFAULT_COLOR = '#F3F4F6';
 
 /**
- * Colors for status text with no corresponding numeric product code (e.g.
- * `status_intern` values, alternate gender forms, legacy free-form text).
- * The 13 coded statuses live in the single source of truth at
- * `domain/product-status.ts` — do not duplicate them here.
+ * Colors for status text with no numeric code of its own: pill labels the UI
+ * composes ("Aprobado"), alternate gender forms the backend still emits, and
+ * the payment/credit vocabularies, which are a different domain from the
+ * product flow — "Pendiente" here is a seller payout, not the product status
+ * 99 "Pendiente de revisión".
+ *
+ * Coded statuses live in `domain/product-status.ts`. Do not duplicate them.
  */
 const SUPPLEMENTARY_STATUS_COLORS: Record<string, string> = {
   rechazada: '#EB6A6A',
-  preaprobado: '#DBE3F3',
   aprobada: '#DBE3F3',
   aprobado: '#d6e5fb',
   activa: '#81BD53',
-  bolería: '#B693B1',
-  'bolería p/c': '#C7A9C3',
   etiquetado: '#9EC5D8',
   inactiva: '#E6E7E7',
   inactivar: '#E6E7E7',
-  completado: '#E3EFD9',
-  ingresado: '#99C9C9',
-  autentificado: '#9594B6',
   heredit: '#B7B4DB',
   apartado: '#F0C8E0',
-  donado: '#D89E49',
   'apartado perdido': '#F2B186',
   'venta cancelada': '#D3DAE2',
   cancelada: '#D3DAE2',

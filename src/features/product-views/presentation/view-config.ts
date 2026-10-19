@@ -3,7 +3,11 @@ import {
   normalizeStatusText,
 } from '@/src/features/product-views/domain/product-status';
 import {
+  ACTIVE_CODE,
+} from '@/src/features/product-views/domain/product-status';
+import {
   isPublicationApproved,
+  isPublicationProgress,
 } from '@/src/features/product-views/domain/publication-status';
 import type {
   Product,
@@ -45,11 +49,14 @@ function statusIncludes(...needles: readonly string[]) {
   };
 }
 
-function statusEquals(...values: readonly string[]) {
-  return (product: Product) => {
-    const status = product.status.trim().toLowerCase();
-    return values.some((value) => status === value);
-  };
+/**
+ * Match on the numeric status, not on its label. The label is presentation
+ * text: it was renamed by the backend's status refactor, two codes share
+ * "Preaprobado", and the sales view derives its label from payment data rather
+ * than from the code.
+ */
+function statusIs(...codes: readonly number[]) {
+  return (product: Product) => codes.includes(product.statusCode);
 }
 
 /** Label for a known numeric product status code, from the single source of truth. */
@@ -61,8 +68,8 @@ function statusLabel(code: number): string {
   return status.label;
 }
 
-function isReceivedStatus(product: Product): boolean {
-  return product.status.trim().toLowerCase() === 'recibido';
+function isInPublicationProgress(product: Product): boolean {
+  return isPublicationProgress(product.statusCode);
 }
 
 export const VIEW_CONFIG: Record<ProductView, ViewConfig> = {
@@ -76,26 +83,26 @@ export const VIEW_CONFIG: Record<ProductView, ViewConfig> = {
         label: statusLabel(3),
         icon: 'ion:checkmark-circle-outline',
         format: 'count',
-        matches: statusIncludes(normalizeStatusText(statusLabel(3))),
+        matches: statusIs(3),
       },
       {
         label: statusLabel(2),
         icon: 'ion:sync-outline',
         format: 'count',
-        matches: statusIncludes(normalizeStatusText(statusLabel(2))),
+        // Renegociación (5) counts here: it is the same price conversation, one round later.
+        matches: statusIs(2, 5),
       },
       {
         label: statusLabel(1),
         icon: 'ion:refresh-outline',
         format: 'count',
-        // Partial needle: intentionally also matches truncated/prefixed variants of "En Revisión".
-        matches: statusIncludes('revisión'),
+        matches: statusIs(1),
       },
       {
         label: statusLabel(4),
         icon: 'ion:close-circle-outline',
         format: 'count',
-        matches: statusIncludes('rechazad'),
+        matches: statusIs(4),
       },
     ],
   },
@@ -110,22 +117,20 @@ export const VIEW_CONFIG: Record<ProductView, ViewConfig> = {
         icon: 'ion:time-outline',
         format: 'count',
         matches: (product: Product) =>
-          isReceivedStatus(product) &&
-          !isPublicationApproved(product.statusIntern ?? ''),
+          isInPublicationProgress(product) && !isPublicationApproved(product.statusCode),
       },
       {
         label: 'Aprobado',
         icon: 'ion:checkmark-circle-outline',
         format: 'count',
         matches: (product: Product) =>
-          isReceivedStatus(product) &&
-          isPublicationApproved(product.statusIntern ?? ''),
+          isInPublicationProgress(product) && isPublicationApproved(product.statusCode),
       },
       {
         label: statusLabel(11),
         icon: 'ion:pricetag-outline',
         format: 'count',
-        matches: statusEquals(normalizeStatusText(statusLabel(11))),
+        matches: statusIs(ACTIVE_CODE),
       },
     ],
   },
@@ -139,14 +144,13 @@ export const VIEW_CONFIG: Record<ProductView, ViewConfig> = {
         label: statusLabel(13),
         icon: 'ion:arrow-undo-outline',
         format: 'count',
-        // 'devolución' is an extra fuzzy needle with no dedicated status code.
-        matches: statusIncludes(normalizeStatusText(statusLabel(13)), 'devolución'),
+        matches: statusIs(13),
       },
       {
         label: statusLabel(14),
         icon: 'ion:checkmark-circle-outline',
         format: 'count',
-        matches: statusIncludes(normalizeStatusText(statusLabel(14))),
+        matches: statusIs(14),
       },
     ],
   },

@@ -1,102 +1,75 @@
+import { findProductStatusByCode } from './product-status';
+
 /**
- * Internal stages a publication moves through between "Recibido" (status 10)
- * and "Activo" (status 11).
+ * Stages a publication moves through between acceptance and going on sale.
  *
- * The numeric status only tells those two apart, so the whole middle of the
- * journey lives in `status_intern`. The match values are the literal strings
- * stored in the database — verified against products with status 10 to 12 — and
- * must not be guessed: a misspelled value matches nothing and the publication
- * silently falls back to the first stage.
- *
- * "Ingresado" and "Completado" share a stage: to a seller both mean the product
- * is approved.
+ * These used to be matched against `status_intern` strings, a second status
+ * axis the backend has since removed: every one of them is now a numeric
+ * status of its own (api_rga spec 001). Matching on text was never safe — a
+ * renamed label silently matched nothing and the publication fell back to the
+ * first stage — and the rename of "Recibido" to "Preaprobado" is exactly what
+ * made it fail.
  */
-export interface PublicationStage {
-  readonly matchValues: readonly string[];
+export interface PublicationStep {
+  readonly codes: readonly number[];
   readonly label: string;
 }
 
-const FIRST_STAGE: PublicationStage = {
-  matchValues: ['preaprobado', 'preaprobada'],
-  label: 'Preaprobado',
-};
+const PREAPPROVED_CODE = 10;
+const AUTHENTICATED_CODE = 16;
+const BALLROOM_CODES = [17, 18] as const;
 
-export const PUBLICATION_STAGES: readonly PublicationStage[] = [
-  FIRST_STAGE,
-  { matchValues: ['autentificado'], label: 'Autentificado' },
-  { matchValues: ['bolería', 'boleria'], label: 'Bolería' },
-  { matchValues: ['bolería p/c', 'boleria p/c'], label: 'Bolería P/C' },
-  { matchValues: ['ingresado', 'completado'], label: 'Aprobado' },
-];
+/** Entered the warehouse (15) or finished internal processing (12). */
+const APPROVED_CODES = [15, 12] as const;
 
-/** Last stage: from here the publication is ready to go on sale. */
-const APPROVED_STAGE = PUBLICATION_STAGES[PUBLICATION_STAGES.length - 1];
-
-function normalize(statusIntern: string): string {
-  return statusIntern.trim().toLowerCase();
-}
-
-export function findPublicationStage(statusIntern: string): PublicationStage | undefined {
-  const normalized = normalize(statusIntern);
-  return PUBLICATION_STAGES.find((stage) => stage.matchValues.includes(normalized));
-}
-
-export interface PublicationTimelineStep {
-  readonly matchValue: string;
-  readonly displayLabel: string;
-}
+const INFO_GENERATED_CODE = 12;
 
 /**
- * Steps shown to the seller in the detail timeline. Deliberately a curated
- * subset of PUBLICATION_STAGES: the seller only follows these four milestones,
- * even though the product moves through more internal stages. Display labels
- * differ from a couple of raw match values ("Autentificación" vs
- * "Autentificado", "Aprobado" vs "Ingresado") to read correctly to sellers.
+ * Milestones shown to the seller, a deliberately curated subset: the product
+ * moves through more states than these four.
+ *
+ * Note that 15 "Ingresado" sits in the LAST step even though it comes early in
+ * the real flow. That is inherited behaviour, not an oversight: to a seller,
+ * a piece that reached the warehouse is already approved. Splitting 15 from 12
+ * would be a product decision, not a refactor.
  */
-export const PUBLICATION_TIMELINE_STEPS: readonly PublicationTimelineStep[] = [
-  { matchValue: 'preaprobado', displayLabel: 'Preaprobado' },
-  { matchValue: 'autentificado', displayLabel: 'Autentificación' },
-  { matchValue: 'bolería', displayLabel: 'Bolería' },
-  { matchValue: 'ingresado', displayLabel: 'Aprobado' },
+export const PUBLICATION_TIMELINE_STEPS: readonly PublicationStep[] = [
+  { codes: [PREAPPROVED_CODE], label: 'Preaprobado' },
+  { codes: [AUTHENTICATED_CODE], label: 'Autentificación' },
+  { codes: BALLROOM_CODES, label: 'Bolería' },
+  { codes: APPROVED_CODES, label: 'Aprobado' },
 ];
 
-/**
- * Raw values that belong to a step but are not its match value. Without this a
- * product stored as "Completado" — the most common state of all — matched
- * nothing and the timeline fell back to the first step, showing an approved
- * publication as if it had just been preapproved.
- */
-const TIMELINE_STEP_ALIASES: Record<string, string> = {
-  preaprobada: 'preaprobado',
-  boleria: 'bolería',
-  'bolería p/c': 'bolería',
-  'boleria p/c': 'bolería',
-  completado: 'ingresado',
-};
+/** Codes the seller sees as part of the publication journey, before it is active. */
+export const PUBLICATION_PROGRESS_CODES: readonly number[] = PUBLICATION_TIMELINE_STEPS.flatMap(
+  (step) => [...step.codes],
+);
 
-export function resolvePublicationStepIndex(statusIntern: string): number {
-  const normalized = normalize(statusIntern);
-  const stepValue = TIMELINE_STEP_ALIASES[normalized] ?? normalized;
-  const index = PUBLICATION_TIMELINE_STEPS.findIndex((step) => step.matchValue === stepValue);
+export function isPublicationProgress(code: number): boolean {
+  return PUBLICATION_PROGRESS_CODES.includes(code);
+}
+
+/** Index of the step a publication is on; 0 when the code belongs to no step. */
+export function resolvePublicationStepIndex(code: number): number {
+  const index = PUBLICATION_TIMELINE_STEPS.findIndex((step) => step.codes.includes(code));
   return index === -1 ? 0 : index;
 }
 
-/** True once the product has reached "ingresado" or the later "completado" step. */
-export function isPublicationApproved(statusIntern: string): boolean {
-  return APPROVED_STAGE?.matchValues.includes(normalize(statusIntern)) ?? false;
+export function isPublicationApproved(code: number): boolean {
+  return APPROVED_CODES.includes(code as (typeof APPROVED_CODES)[number]);
+}
+
+/** "Información" is only fully generated once the product reaches Completado. */
+export function isPublicationInfoGenerated(code: number): boolean {
+  return code === INFO_GENERATED_CODE;
 }
 
 /**
- * Pill text for a card while the publication is still in "Recibido".
- * Shows only the public milestone — Aprobado once the product is fully
- * processed internally, Preaprobado while it is still in progress.
- * Internal stages (Autentificado, Bolería, etc.) are not exposed to sellers.
+ * Pill text for a product still inside the publication journey. Internal
+ * milestones (Autentificado, Bolería) are not exposed to sellers: they only
+ * see whether the piece is approved yet.
  */
-export function resolvePublicationPillLabel(statusIntern: string): string {
-  return isPublicationApproved(statusIntern) ? 'Aprobado' : FIRST_STAGE.label;
-}
-
-/** "Información" is only fully generated once the internal status reaches "completado". */
-export function isPublicationInfoGenerated(statusIntern: string): boolean {
-  return normalize(statusIntern) === 'completado';
+export function resolvePublicationPillLabel(code: number): string {
+  if (isPublicationApproved(code)) return 'Aprobado';
+  return findProductStatusByCode(PREAPPROVED_CODE)?.label ?? 'Preaprobado';
 }

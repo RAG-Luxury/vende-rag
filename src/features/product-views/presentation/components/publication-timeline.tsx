@@ -6,15 +6,15 @@ import {
 } from '@/src/features/product-views/domain/publication-status';
 
 interface PublicationTimelineProps {
-  statusIntern: string;
+  statusCode: number;
   isAuthenticated: boolean;
 }
 
 export function PublicationTimeline({
-  statusIntern,
+  statusCode,
   isAuthenticated: _isAuthenticated,
 }: PublicationTimelineProps) {
-  const activeIndex = resolvePublicationStepIndex(statusIntern);
+  const activeIndex = resolvePublicationStepIndex(statusCode);
 
   return (
     <div className="flex items-start">
@@ -27,7 +27,7 @@ export function PublicationTimeline({
         const rightLineFilled = !isLast && isCompleted;
 
         return (
-          <div key={step.matchValue} className="flex flex-1 flex-col items-center">
+          <div key={step.label} className="flex flex-1 flex-col items-center">
             <div className="flex w-full items-center">
               <span
                 className={`h-0.5 flex-1 ${
@@ -52,7 +52,7 @@ export function PublicationTimeline({
                 isPastOrActive ? 'font-semibold text-neutral-900' : 'text-neutral-400'
               }`}
             >
-              {step.displayLabel}
+              {step.label}
             </span>
           </div>
         );

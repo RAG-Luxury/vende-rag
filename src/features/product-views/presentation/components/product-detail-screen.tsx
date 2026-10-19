@@ -11,6 +11,7 @@ import { resolvePayment } from '@/src/features/product-views/domain/payment-stat
 import type { SellerPayment } from '@/src/features/product-views/domain/product-view-repository';
 import {
   isPublicationApproved,
+  isPublicationProgress,
   resolvePublicationPillLabel,
 } from '@/src/features/product-views/domain/publication-status';
 // Reused as-is below the desktop product detail (same section LandingScreen and
@@ -68,7 +69,7 @@ export function ProductDetailScreen({ productId, view }: ProductDetailScreenProp
     setOpenSection((current) => (current === section ? null : section));
   }
   const { data: product, isLoading, isError } = useProductDetail(productId);
-  const isNegotiation = product?.state === NEGOTIATION_STATE;
+  const isNegotiation = product?.statusCode === NEGOTIATION_STATE;
   const respondNegotiation = useRespondNegotiation();
   const discountAmount = isNegotiation ? 0 : (product?.discountAmount ?? 0);
   const finalPrice = isNegotiation ? 0 : (product?.finalPrice ?? 0);
@@ -93,11 +94,10 @@ export function ProductDetailScreen({ productId, view }: ProductDetailScreenProp
       : (price?.sellerPrice ?? product?.earning)) ?? 0;
   const itemizedPaid = (payments ?? []).reduce((total, payment) => total + payment.amount, 0);
   const { isPaid, paid, pending } = resolvePayment(product?.status ?? '', earning, itemizedPaid);
-  const isReceived = (product?.status ?? '').trim().toLowerCase() === 'recibido';
-  const pillStatus =
-    isReceived && product?.statusIntern
-      ? resolvePublicationPillLabel(product.statusIntern)
-      : (product?.status ?? '');
+  const inPublicationProgress = isPublicationProgress(product?.statusCode ?? 0);
+  const pillStatus = inPublicationProgress
+    ? resolvePublicationPillLabel(product?.statusCode ?? 0)
+    : (product?.status ?? '');
   const isPreaprobada = pillStatus.trim().toLowerCase() === 'preaprobado';
   const showDiscountButton =
     view === 'publicaciones' &&
@@ -220,17 +220,15 @@ export function ProductDetailScreen({ productId, view }: ProductDetailScreenProp
                   ) : null}
                 </div>
 
-                {view === 'publicaciones' &&
-                  product.statusIntern &&
-                  product.status.trim().toLowerCase() !== 'activo' ? (
+                {view === 'publicaciones' && isPublicationProgress(product.statusCode) ? (
                   <div className="mt-4 px-6">
-                    {isPublicationApproved(product.statusIntern) ? (
+                    {isPublicationApproved(product.statusCode) ? (
                       <>
                         {/* Temporarily swapped for PublicationGenerationLoaderBar — restore this
                             ring-based design by uncommenting it (and the import above) and
                             removing the loader bar below.
                         <PublicationGenerationChecklist
-                          infoGenerated={isPublicationInfoGenerated(product.statusIntern)}
+                          infoGenerated={isPublicationInfoGenerated(product.statusCode)}
                           hasVideo={product.hasVideo}
                           hasPhotos={product.hasPhotos}
                           hasTag={product.hasTag}
@@ -239,7 +237,7 @@ export function ProductDetailScreen({ productId, view }: ProductDetailScreenProp
                         {/* Temporarily hidden per user request — uncomment to bring the progress
                             bars back.
                         <PublicationGenerationLoaderBar
-                          infoGenerated={isPublicationInfoGenerated(product.statusIntern)}
+                          infoGenerated={isPublicationInfoGenerated(product.statusCode)}
                           hasVideo={product.hasVideo}
                           hasPhotos={product.hasPhotos}
                           hasTag={product.hasTag}
@@ -264,7 +262,7 @@ export function ProductDetailScreen({ productId, view }: ProductDetailScreenProp
                     ) : (
                       <>
                         <PublicationTimeline
-                          statusIntern={product.statusIntern}
+                          statusCode={product.statusCode}
                           isAuthenticated={product.isAuthenticated}
                         />
                         {isPreaprobada ? (
@@ -486,17 +484,15 @@ export function ProductDetailScreen({ productId, view }: ProductDetailScreenProp
                   </div>
                 </div>
 
-                {view === 'publicaciones' &&
-                  product.statusIntern &&
-                  product.status.trim().toLowerCase() !== 'activo' ? (
+                {view === 'publicaciones' && isPublicationProgress(product.statusCode) ? (
                   <div className="mt-6">
-                    {isPublicationApproved(product.statusIntern) ? (
+                    {isPublicationApproved(product.statusCode) ? (
                       <>
                         {/* Temporarily swapped for PublicationGenerationLoaderBar — restore this
                             ring-based design by uncommenting it (and the import above) and
                             removing the loader bar below.
                         <PublicationGenerationChecklist
-                          infoGenerated={isPublicationInfoGenerated(product.statusIntern)}
+                          infoGenerated={isPublicationInfoGenerated(product.statusCode)}
                           hasVideo={product.hasVideo}
                           hasPhotos={product.hasPhotos}
                           hasTag={product.hasTag}
@@ -505,7 +501,7 @@ export function ProductDetailScreen({ productId, view }: ProductDetailScreenProp
                         {/* Temporarily hidden per user request — uncomment to bring the progress
                             bars back.
                         <PublicationGenerationLoaderBar
-                          infoGenerated={isPublicationInfoGenerated(product.statusIntern)}
+                          infoGenerated={isPublicationInfoGenerated(product.statusCode)}
                           hasVideo={product.hasVideo}
                           hasPhotos={product.hasPhotos}
                           hasTag={product.hasTag}
@@ -530,7 +526,7 @@ export function ProductDetailScreen({ productId, view }: ProductDetailScreenProp
                     ) : (
                       <>
                         <PublicationTimeline
-                          statusIntern={product.statusIntern}
+                          statusCode={product.statusCode}
                           isAuthenticated={product.isAuthenticated}
                         />
                         {isPreaprobada ? (

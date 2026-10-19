@@ -10,7 +10,7 @@ export interface Product {
   finalPrice: number;
   earning: number;
   status: string;
-  statusIntern: string;
+  statusCode: number;
   initialStatus: string;
   image: string;
 }
@@ -48,9 +48,8 @@ export interface ProductDetail {
   uuid: string;
   name: string;
   status: string;
-  statusIntern: string;
+  statusCode: number;
   initialStatus: string;
-  state: number;
   brand: string;
   model: string;
   department: string;
