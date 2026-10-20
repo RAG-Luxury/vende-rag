@@ -9,6 +9,12 @@ export const designerHttpRepository = {
       ...(signal ? { signal } : {}),
     });
 
-    return response.data.map((item) => ({ id: item.id, name: item.name, code: item.code }));
+    return response.data.map((item) => ({
+      id: item.id,
+      name: item.name,
+      code: item.code,
+      available: item.available !== false,
+      unavailableReason: item.unavailable_reason ?? null,
+    }));
   },
 } satisfies DesignerRepository;
