@@ -2,13 +2,7 @@ import {
   findProductStatusByCode,
   normalizeStatusText,
 } from '@/src/features/product-views/domain/product-status';
-import {
-  ACTIVE_CODE,
-} from '@/src/features/product-views/domain/product-status';
-import {
-  isPublicationApproved,
-  isPublicationProgress,
-} from '@/src/features/product-views/domain/publication-status';
+import { resolvePublicationStage } from '@/src/features/product-views/domain/publication-status';
 import type {
   Product,
   ProductView,
@@ -68,10 +62,6 @@ function statusLabel(code: number): string {
   return status.label;
 }
 
-function isInPublicationProgress(product: Product): boolean {
-  return isPublicationProgress(product.statusCode);
-}
-
 export const VIEW_CONFIG: Record<ProductView, ViewConfig> = {
   solicitudes: {
     title: 'Solicitudes',
@@ -113,24 +103,25 @@ export const VIEW_CONFIG: Record<ProductView, ViewConfig> = {
     cardSecondary: SALE_PRICE_SECONDARY,
     summary: [
       {
-        label: 'Preaprobado',
-        icon: 'ion:time-outline',
+        label: 'En proceso',
+        icon: 'ion:cube-outline',
         format: 'count',
         matches: (product: Product) =>
-          isInPublicationProgress(product) && !isPublicationApproved(product.statusCode),
+          resolvePublicationStage(product.statusCode, product.status) === 'En proceso',
       },
       {
-        label: 'Aprobado',
+        label: 'Activo',
+        icon: 'ion:pricetag-outline',
+        format: 'count',
+        matches: (product: Product) =>
+          resolvePublicationStage(product.statusCode, product.status) === 'Activo',
+      },
+      {
+        label: 'Bolería',
         icon: 'ion:checkmark-circle-outline',
         format: 'count',
         matches: (product: Product) =>
-          isInPublicationProgress(product) && isPublicationApproved(product.statusCode),
-      },
-      {
-        label: statusLabel(11),
-        icon: 'ion:pricetag-outline',
-        format: 'count',
-        matches: statusIs(ACTIVE_CODE),
+          resolvePublicationStage(product.statusCode, product.status) === 'Bolería',
       },
     ],
   },

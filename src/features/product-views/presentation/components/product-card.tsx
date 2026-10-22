@@ -4,10 +4,7 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import type { Product } from '@/src/features/product-views/domain/product-view-repository';
-import {
-  isPublicationProgress,
-  resolvePublicationPillLabel,
-} from '@/src/features/product-views/domain/publication-status';
+import { resolvePublicationStage } from '@/src/features/product-views/domain/publication-status';
 import { getStatusStyle } from './product-status';
 
 const currencyFormatter = new Intl.NumberFormat('es-MX', {
@@ -25,15 +22,24 @@ interface ProductCardProps {
   product: Product;
   secondary: CardSecondary;
   isSale: boolean;
+  isPublication: boolean;
   heightPx?: number | undefined;
 }
 
-export function ProductCard({ product, secondary, isSale, heightPx = 350 }: ProductCardProps) {
+export function ProductCard({
+  product,
+  secondary,
+  isSale,
+  isPublication,
+  heightPx = 350,
+}: ProductCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = product.image !== '' && !imageFailed;
 
-  const pillStatus = isPublicationProgress(product.statusCode)
-    ? resolvePublicationPillLabel(product.statusCode)
+  // En publicaciones el pill muestra la etapa condensada (En proceso / Activo /
+  // Bolería), igual que la PublicationCard del app. En otras vistas, el estado tal cual.
+  const pillStatus = isPublication
+    ? resolvePublicationStage(product.statusCode, product.status)
     : product.status;
 
   return (

@@ -1,4 +1,4 @@
-import { findProductStatusByCode } from './product-status';
+import { ACTIVE_CODE, findProductStatusByCode } from './product-status';
 
 /**
  * Stages a publication moves through between acceptance and going on sale.
@@ -72,4 +72,32 @@ export function isPublicationInfoGenerated(code: number): boolean {
 export function resolvePublicationPillLabel(code: number): string {
   if (isPublicationApproved(code)) return 'Aprobado';
   return findProductStatusByCode(PREAPPROVED_CODE)?.label ?? 'Preaprobado';
+}
+
+/**
+ * Three-bucket grouping of a publication, mirroring the mobile app
+ * (`RAG-Front` -> `publication_stages.dart`) one-to-one: the numeric status
+ * decides, and the text is only a fallback for responses that arrive without a
+ * code. Unlike the seller timeline above, this DOES surface Bolería as its own
+ * bucket, matching the mobile grouping.
+ */
+export type PublicationStage = 'En proceso' | 'Activo' | 'Bolería';
+
+/** Chip order, same as mobile's `kPublicationFilterLabels`. */
+export const PUBLICATION_STAGES: readonly PublicationStage[] = [
+  'En proceso',
+  'Activo',
+  'Bolería',
+];
+
+export function resolvePublicationStage(code: number, statusText = ''): PublicationStage {
+  if (code === ACTIVE_CODE) return 'Activo'; // 11
+  if ((BALLROOM_CODES as readonly number[]).includes(code)) return 'Bolería'; // 17, 18
+  if (code > 0) return 'En proceso'; // 10, 12, 15, 16, ...
+
+  // Fallback por texto (cuando no llega el code), espejo del mobile.
+  const text = statusText.trim().toLowerCase();
+  if (text.startsWith('boler')) return 'Bolería';
+  if (text === 'activo') return 'Activo';
+  return 'En proceso';
 }

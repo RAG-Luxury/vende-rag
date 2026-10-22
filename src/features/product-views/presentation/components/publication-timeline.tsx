@@ -20,6 +20,7 @@ export function PublicationTimeline({
     <div className="flex items-start">
       {PUBLICATION_TIMELINE_STEPS.map((step, index) => {
         const isCompleted = index < activeIndex;
+        const isActive = index === activeIndex;
         const isPastOrActive = index <= activeIndex;
         const isFirst = index === 0;
         const isLast = index === PUBLICATION_TIMELINE_STEPS.length - 1;
@@ -49,7 +50,11 @@ export function PublicationTimeline({
             </div>
             <span
               className={`mt-2 px-0.5 text-center text-[10px] leading-tight break-words ${
-                isPastOrActive ? 'font-semibold text-neutral-900' : 'text-neutral-400'
+                isActive
+                  ? 'font-semibold text-neutral-900'
+                  : isCompleted
+                    ? 'font-normal text-neutral-900'
+                    : 'text-neutral-400'
               }`}
             >
               {step.label}

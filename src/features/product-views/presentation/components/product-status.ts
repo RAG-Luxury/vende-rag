@@ -16,6 +16,7 @@ const DEFAULT_COLOR = '#F3F4F6';
  * Coded statuses live in `domain/product-status.ts`. Do not duplicate them.
  */
 const SUPPLEMENTARY_STATUS_COLORS: Record<string, string> = {
+  'en proceso': '#DBE3F3',
   rechazada: '#EB6A6A',
   aprobada: '#DBE3F3',
   aprobado: '#d6e5fb',
