@@ -1,5 +1,7 @@
 'use client';
 
+import { Info } from 'lucide-react';
+
 import { TopNav } from '@/src/shared/ui/top-nav';
 // Reuses the same header/footer the main landing page uses; no shared
 // cross-feature abstraction exists yet for this composition (same precedent
@@ -59,9 +61,28 @@ export function DesignersScreen() {
                 {designers.map((designer) => (
                   <li
                     key={designer.id}
-                    className="break-inside-avoid py-3 text-center text-neutral-700"
+                    className={`break-inside-avoid py-3 text-center ${
+                      designer.available ? 'text-neutral-700' : 'text-neutral-400'
+                    }`}
                   >
-                    {designer.name}
+                    {designer.available ? (
+                      designer.name
+                    ) : (
+                      /* El directorio es informativo: aqui no se elige nada,
+                         asi que la marca suspendida se atenua y se explica en
+                         vez de desaparecer. Quien busca la suya la encuentra
+                         y entiende por que no puede subirla todavia. */
+                      <>
+                        <span className="inline-flex items-center gap-1.5">
+                          {designer.name}
+                        </span>
+                        {designer.unavailableReason ? (
+                          <span className="mt-0.5 block text-[10px] text-neutral-400">
+                            {designer.unavailableReason}
+                          </span>
+                        ) : null}
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>

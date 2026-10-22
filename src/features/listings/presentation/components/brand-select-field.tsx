@@ -86,16 +86,40 @@ export function BrandSelectField({ value, onSelect }: BrandSelectFieldProps) {
             <li key={brand.id} className="border-b border-neutral-100 last:border-b-0">
               <button
                 type="button"
+                disabled={!brand.available}
+                aria-disabled={!brand.available}
                 onClick={() => {
+                  if (!brand.available) return;
                   onSelect(brand);
                   setQuery(brand.name);
                   setIsOpen(false);
                 }}
-                className={`w-full px-4 py-3 text-left text-base ${
-                  brand.id === value ? 'text-brand font-medium' : 'text-neutral-900'
+                className={`w-full px-4 py-3 text-left text-sm ${
+                  !brand.available
+                    ? 'cursor-not-allowed text-neutral-400'
+                    : brand.id === value
+                      ? 'text-brand font-medium'
+                      : 'text-neutral-900'
                 }`}
               >
-                {brand.name}
+                {!brand.available && brand.unavailableReason ? (
+                  /* Solo las suspendidas llevan el par centrado. Las
+                     disponibles conservan su alineacion a la izquierda: son
+                     mas de cien y centrarlas cambiaria la lista entera.
+                     En desktop la fila es ancha, asi que separar nombre y
+                     motivo a los extremos los deja tan lejos que no se leen
+                     como una sola cosa.
+                     Los 2px del nombre son ajuste optico —16px contra 14px—
+                     por eso `relative` y no margen: no cambia la altura. */
+                  <span className="flex justify-between items-center gap-2">
+                    <span className="relative truncate text-sm">{brand.name}</span>
+                    <span className="shrink-0 text-[10px] text-neutral-400">
+                      {brand.unavailableReason}
+                    </span>
+                  </span>
+                ) : (
+                  brand.name
+                )}
               </button>
             </li>
           ))}
