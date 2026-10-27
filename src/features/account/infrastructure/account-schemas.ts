@@ -78,3 +78,22 @@ export const r2UploadResponseSchema = z.object({
 });
 
 export const signContractResponseSchema = z.unknown();
+
+/**
+ * api_rga returns the single-use signing url. `mock` is true while the API runs
+ * without DocuSign credentials, and the url then points nowhere real — the UI
+ * says so instead of rendering a frame that cannot load.
+ */
+export const contractSignatureResponseSchema = z.object({
+  success: z.boolean(),
+  envelopeId: z.string(),
+  url: z.string().url(),
+  mock: z.boolean().optional(),
+});
+
+export const contractSignatureConfirmSchema = z.object({
+  success: z.boolean(),
+  stored: z.boolean().optional(),
+  alreadySigned: z.boolean().optional(),
+  url: z.string().optional(),
+});

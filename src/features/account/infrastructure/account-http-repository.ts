@@ -11,6 +11,8 @@ import {
   banksResponseSchema,
   clientProfileResponseSchema,
   clientProfileSummaryResponseSchema,
+  contractSignatureConfirmSchema,
+  contractSignatureResponseSchema,
   contractUploadResponseSchema,
   deleteAccountResponseSchema,
   signContractResponseSchema,
@@ -236,5 +238,34 @@ export const accountHttpRepository = {
       schema: signContractResponseSchema,
       ...(signal ? { signal } : {}),
     });
+  },
+
+  async requestContractSignature(signal) {
+    // No clientId in the path or body: api_rga reads it from the bearer token.
+    const response = await httpRequest('/web/client/contrato/firma', {
+      method: 'POST',
+      schema: contractSignatureResponseSchema,
+      ...(signal ? { signal } : {}),
+    });
+
+    return {
+      envelopeId: response.envelopeId,
+      url: response.url,
+      mock: response.mock ?? false,
+    };
+  },
+
+  async confirmContractSignature(envelopeId, signal) {
+    const response = await httpRequest('/web/client/contrato/firma/confirmar', {
+      method: 'POST',
+      body: { envelopeId },
+      schema: contractSignatureConfirmSchema,
+      ...(signal ? { signal } : {}),
+    });
+
+    return {
+      stored: response.stored ?? false,
+      alreadySigned: response.alreadySigned ?? false,
+    };
   },
 } satisfies AccountRepository;

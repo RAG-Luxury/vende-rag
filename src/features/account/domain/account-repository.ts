@@ -1,3 +1,8 @@
+import type {
+  ContractSignatureConfirmation,
+  ContractSignatureSession,
+} from '@/src/features/account/domain/contract-signature';
+
 export interface ClientAddress {
   id: number;
   street: string;
@@ -100,4 +105,22 @@ export interface AccountRepository {
     fileName: string,
     signal?: AbortSignal,
   ): Promise<void>;
+  /**
+   * Opens an embedded DocuSign session for the authenticated client.
+   *
+   * Takes no clientId on purpose: api_rga derives it from the bearer token, so
+   * accepting one here would imply a caller can sign on someone else's behalf.
+   */
+  requestContractSignature(signal?: AbortSignal): Promise<ContractSignatureSession>;
+  /**
+   * Archives the signed contract without waiting for DocuSign's webhook.
+   *
+   * The API verifies against DocuSign that the envelope belongs to the
+   * authenticated client and is actually completed, so `envelopeId` travelling
+   * from the browser is not a trust problem.
+   */
+  confirmContractSignature(
+    envelopeId: string,
+    signal?: AbortSignal,
+  ): Promise<ContractSignatureConfirmation>;
 }
