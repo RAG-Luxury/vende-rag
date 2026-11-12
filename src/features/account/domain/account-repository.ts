@@ -58,6 +58,8 @@ export interface ClientProfile {
   phone: string;
   contract: string | null;
   contractSigned: boolean;
+  /** Which contract flow the backend offers for this environment. */
+  contractSigning: 'upload' | 'docusign';
   address: ClientAddress | null;
   paymentMethod: ClientPaymentMethod | null;
 }

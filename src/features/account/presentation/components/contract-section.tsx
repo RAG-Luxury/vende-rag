@@ -3,7 +3,6 @@
 import { Icon } from '@iconify/react';
 import { useState } from 'react';
 
-import { useContractSigningFlow } from '@/src/features/account/application/contract-signing-context';
 import { useProfile } from '../hooks/use-profile';
 import { ContractGenerator } from './contract/contract-generator';
 import { ContractSignatureFrame } from './contract/contract-signature-frame';
@@ -36,9 +35,9 @@ export function ContractContent({ clientId }: ContractContentProps) {
   const { data: profile, isLoading, isError } = useProfile(clientId);
   const [signingOpen, setSigningOpen] = useState(false);
 
-  // Un solo botón; el flujo configurado decide qué abre. Mientras api_rga no
-  // tenga sus credenciales de DocuSign en ese entorno, sigue siendo el de hoy.
-  const usesDocusign = useContractSigningFlow() === 'docusign';
+  // El flujo lo decide el API (viene en el perfil): docusign si el backend
+  // tiene credenciales en ese entorno, upload (legacy) si no. El front no lo controla.
+  const usesDocusign = profile?.contractSigning === 'docusign';
 
   return (
     <>

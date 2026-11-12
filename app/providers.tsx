@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { env } from '@/src/shared/infrastructure/env/env';
 import { AccountRepositoryProvider } from '@/src/features/account/presentation/account-repository-provider';
-import { ContractSigningProvider } from '@/src/features/account/presentation/contract-signing-provider';
 import { accountHttpRepository } from '@/src/features/account/infrastructure/account-http-repository';
 import { AuthRepositoryProvider } from '@/src/features/auth/presentation/auth-repository-provider';
 import { authHttpRepository } from '@/src/features/auth/infrastructure/auth-http-repository';
@@ -39,7 +38,6 @@ export function Providers({ children }: { children: ReactNode }) {
         <GoogleOAuthProvider clientId={env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
           <AuthRepositoryProvider repository={authHttpRepository}>
             <AccountRepositoryProvider repository={accountHttpRepository}>
-              <ContractSigningProvider flow={env.NEXT_PUBLIC_CONTRACT_SIGNING}>
               <FaqRepositoryProvider repository={faqHttpRepository}>
                 <DesignerRepositoryProvider repository={designerHttpRepository}>
                   <BrandRepositoryProvider repository={brandHttpRepository}>
@@ -63,7 +61,6 @@ export function Providers({ children }: { children: ReactNode }) {
                   </BrandRepositoryProvider>
                 </DesignerRepositoryProvider>
               </FaqRepositoryProvider>
-              </ContractSigningProvider>
             </AccountRepositoryProvider>
           </AuthRepositoryProvider>
         </GoogleOAuthProvider>
