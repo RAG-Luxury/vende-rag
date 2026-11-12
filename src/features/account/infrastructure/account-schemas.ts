@@ -29,6 +29,9 @@ export const clientProfileResponseSchema = z.object({
     email: z.string(),
     phone: z.string(),
     contrato: z.string().nullable(),
+    // Lo decide el API (docusign si hay credenciales, upload si no). Opcional
+    // para no romper si una version vieja del backend aun no lo manda.
+    contractSigning: z.enum(['upload', 'docusign']).optional(),
     adress: z.array(addressSchema),
     paymentMethod: z.array(paymentMethodSchema),
     profile: z

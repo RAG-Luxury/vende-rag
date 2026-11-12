@@ -81,6 +81,7 @@ export const accountHttpRepository = {
       phone: response.data.phone,
       contract: response.data.contrato ? getContractUrl(response.data.contrato) : null,
       contractSigned: Boolean(response.data.contrato),
+      contractSigning: response.data.contractSigning ?? 'upload',
       address: address
         ? {
             id: address.id,
